@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../config/Database.php';
 
-class Aluno {
+class Disciplina {
     private $conn;
 
     public function __construct() {
@@ -10,119 +10,116 @@ class Aluno {
         $this->conn = $database->connect();
     }
 
-    // Retorna todos os alunos
+    // Retorna todas as disciplinas
     public function getAll() {
         try {
-            $stmt = $this->conn->query("SELECT * FROM alunos ORDER BY id ASC");
-            $alunos = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            return $alunos;
+            $stmt = $this->conn->query("SELECT * FROM disciplinas ORDER BY id ASC");
+            $disciplinas = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            return $disciplinas;
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode([
-                "erro" => "Erro ao buscar alunos",
+                "erro" => "Erro ao buscar disciplinas",
                 "mensagem" => $e->getMessage()
             ]);
             exit;
         }
     }
 
-    // Retorna um aluno pelo ID
+    // Retorna uma disciplina pelo ID
     public function getById($id) {
         try {
-            $stmt = $this->conn->prepare("SELECT * FROM alunos WHERE id = :id");
+            $stmt = $this->conn->prepare("SELECT * FROM disciplinas WHERE id = :id");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
 
-            $aluno = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $aluno ?: null;
+            $disciplina = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $disciplina ?: null;
 
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode([
-                "erro" => "Erro ao buscar aluno",
+                "erro" => "Erro ao buscar disciplina",
                 "mensagem" => $e->getMessage()
             ]);
             exit;
         }
     }
 
-    // Cria um novo aluno
-    public function create($nome, $email, $rgm) {
+    // Cria uma nova disciplina
+    public function create($nome, $codigo) {
         try {
             $stmt = $this->conn->prepare("
-                INSERT INTO alunos (nome, email, rgm)
-                VALUES (:nome, :email, :rgm)
+                INSERT INTO disciplinas (nome, codigo)
+                VALUES (:nome, :codigo)
                 RETURNING *
             ");
 
             $stmt->bindParam(':nome', $nome);
-            $stmt->bindParam(':email', $email);
-            $stmt->bindParam(':rgm', $rgm);
+            $stmt->bindParam(':codigo', $codigo);
 
             $stmt->execute();
 
-            $novoAluno = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $novoAluno;
+            $novaDisciplina = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $novaDisciplina;
 
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode([
-                "erro" => "Erro ao criar aluno",
+                "erro" => "Erro ao criar disciplina",
                 "mensagem" => $e->getMessage()
             ]);
             exit;
         }
     }
 
-    // Atualiza um aluno pelo ID
-    public function update($id, $nome, $email, $rgm) {
+    // Atualiza uma disciplina pelo ID
+    public function update($id, $nome, $codigo) {
         try {
             $stmt = $this->conn->prepare("
-                UPDATE alunos
+                UPDATE disciplinas
                 SET nome = :nome,
-                    email = :email,
-                    rgm = :rgm
+                    codigo = :codigo
                 WHERE id = :id
                 RETURNING *
             ");
 
             $stmt->bindParam(':nome', $nome);
-            $stmt->bindParam(':email', $email);
-            $stmt->bindParam(':rgm', $rgm);
+            $stmt->bindParam(':codigo', $codigo);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
             $stmt->execute();
 
-            $alunoAtualizado = $stmt->fetch(PDO::FETCH_ASSOC);
-            return $alunoAtualizado ?: null;
+            $disciplinaAtualizada = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $disciplinaAtualizada ?: null;
 
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode([
-                "erro" => "Erro ao atualizar aluno",
+                "erro" => "Erro ao atualizar disciplina",
                 "mensagem" => $e->getMessage()
             ]);
             exit;
         }
     }
 
-    // Exclui um aluno pelo ID
+    // Exclui uma disciplina pelo ID
     public function delete($id) {
         try {
-            $stmt = $this->conn->prepare("DELETE FROM alunos WHERE id = :id");
+            $stmt = $this->conn->prepare("DELETE FROM disciplinas WHERE id = :id");
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
 
             if ($stmt->rowCount() > 0) {
-                return ["mensagem" => "Aluno excluido com sucesso"];
+                return ["mensagem" => "Disciplina excluida com sucesso"];
             } else {
-                return ["erro" => "Aluno não encontrado"];
+                return ["erro" => "Disciplina não encontrada"];
             }
 
         } catch (PDOException $e) {
             http_response_code(500);
             echo json_encode([
-                "erro" => "Erro ao excluir aluno",
+                "erro" => "Erro ao excluir disciplina",
                 "mensagem" => $e->getMessage()
             ]);
             exit;
