@@ -93,6 +93,14 @@ O foco é construir uma API **simples, funcional e organizada**, seguindo boas p
 
 ---
 
+<img width="908" height="564" alt="image" src="https://github.com/user-attachments/assets/7b53b374-3bc8-47bb-81e6-5be3a066c83c" />
+
+
+
+
+
+---
+
 ## 🔌 Endpoints da API
 
 ### Alunos
