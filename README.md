@@ -93,7 +93,8 @@ O foco é construir uma API **simples, funcional e organizada**, seguindo boas p
 
 ---
 
-<img width="908" height="564" alt="image" src="https://github.com/user-attachments/assets/7b53b374-3bc8-47bb-81e6-5be3a066c83c" />
+<img width="1112" height="553" alt="image" src="https://github.com/user-attachments/assets/95087708-0779-43e7-93f8-968d5bf39d2f" />
+
 
 
 
