@@ -162,7 +162,82 @@ git clone <url-do-repositorio>
 
 
 2. Criar banco de dados PostgreSQL:  
-- Nome: `escola`
+utilize o seguinte comando 
+
+(-- ==========================================
+-- Banco de Dados: escola
+-- ==========================================
+
+-- Se já existir, apaga o banco e cria de novo
+DROP DATABASE IF EXISTS escola;
+CREATE DATABASE escola;
+\c escola
+
+-- ==========================================
+-- Tabela: alunos
+-- ==========================================
+CREATE TABLE alunos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    rgm VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ------------------------------------------------
+-- Tabela: professores
+-- ------------------------------------------------
+
+
+
+CREATE TABLE IF NOT EXISTS professores (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    disciplina_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_disciplina
+        FOREIGN KEY(disciplina_id)
+        REFERENCES disciplinas(id)
+        ON DELETE SET NULL
+);
+
+-- ==========================================
+-- Tabela: disciplinas
+-- ==========================================
+DROP TABLE IF EXISTS disciplinas CASCADE;
+CREATE TABLE disciplinas (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    codigo VARCHAR(20) UNIQUE NOT NULL
+);
+
+-- ==========================================
+-- Tabela: aluno_disciplina (matrícula do aluno em cada disciplina)
+-- ==========================================
+DROP TABLE IF EXISTS aluno_disciplina CASCADE;
+CREATE TABLE aluno_disciplina (
+    id SERIAL PRIMARY KEY,
+    aluno_id INT NOT NULL,
+    disciplina_id INT NOT NULL,
+    CONSTRAINT fk_aluno FOREIGN KEY(aluno_id) REFERENCES alunos(id) ON DELETE CASCADE,
+    CONSTRAINT fk_disciplina FOREIGN KEY(disciplina_id) REFERENCES disciplinas(id) ON DELETE CASCADE,
+    CONSTRAINT uq_aluno_disciplina UNIQUE(aluno_id, disciplina_id)
+);
+
+-- ==========================================
+-- Tabela: notas
+-- ==========================================
+DROP TABLE IF EXISTS notas CASCADE;
+CREATE TABLE notas (
+    id SERIAL PRIMARY KEY,
+    aluno_disciplina_id INT NOT NULL,
+    nota1 NUMERIC(5,2),
+    nota2 NUMERIC(5,2),
+    CONSTRAINT fk_aluno_disciplina FOREIGN KEY(aluno_disciplina_id) REFERENCES aluno_disciplina(id) ON DELETE CASCADE
+);
+
+-- ====)
 
 3. Executar script SQL atualizado (pasta `/database`)  
 
