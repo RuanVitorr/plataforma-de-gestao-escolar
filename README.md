@@ -168,20 +168,27 @@ Diagrama do banco de dados: https://dbdiagram.io/d/69dba77f8089629684789440
 
 ## ▶️ Como Executar o Projeto
 
-1. Clonar o repositório:
+### 1. Clonar o repositório
+
+```bash
 git clone <url-do-repositorio>
+```
 
+---
 
-2. Criar banco de dados PostgreSQL:  
-utilize o seguinte comando 
+### 2. Criar e configurar o banco de dados PostgreSQL
 
-(-- ==========================================
+Execute o script abaixo no seu PostgreSQL:
+
+```sql
+-- ==========================================
 -- Banco de Dados: escola
 -- ==========================================
 
--- Se já existir, apaga o banco e cria de novo
 DROP DATABASE IF EXISTS escola;
 CREATE DATABASE escola;
+
+-- Conectar ao banco (psql)
 \c escola
 
 -- ==========================================
@@ -195,13 +202,19 @@ CREATE TABLE alunos (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ------------------------------------------------
+-- ==========================================
+-- Tabela: disciplinas
+-- ==========================================
+CREATE TABLE disciplinas (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    codigo VARCHAR(20) UNIQUE NOT NULL
+);
+
+-- ==========================================
 -- Tabela: professores
--- ------------------------------------------------
-
-
-
-CREATE TABLE IF NOT EXISTS professores (
+-- ==========================================
+CREATE TABLE professores (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(100) NOT NULL,
     email VARCHAR(100) NOT NULL,
@@ -214,19 +227,8 @@ CREATE TABLE IF NOT EXISTS professores (
 );
 
 -- ==========================================
--- Tabela: disciplinas
+-- Tabela: aluno_disciplina (matrícula)
 -- ==========================================
-DROP TABLE IF EXISTS disciplinas CASCADE;
-CREATE TABLE disciplinas (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    codigo VARCHAR(20) UNIQUE NOT NULL
-);
-
--- ==========================================
--- Tabela: aluno_disciplina (matrícula do aluno em cada disciplina)
--- ==========================================
-DROP TABLE IF EXISTS aluno_disciplina CASCADE;
 CREATE TABLE aluno_disciplina (
     id SERIAL PRIMARY KEY,
     aluno_id INT NOT NULL,
@@ -239,7 +241,6 @@ CREATE TABLE aluno_disciplina (
 -- ==========================================
 -- Tabela: notas
 -- ==========================================
-DROP TABLE IF EXISTS notas CASCADE;
 CREATE TABLE notas (
     id SERIAL PRIMARY KEY,
     aluno_disciplina_id INT NOT NULL,
@@ -247,20 +248,50 @@ CREATE TABLE notas (
     nota2 NUMERIC(5,2),
     CONSTRAINT fk_aluno_disciplina FOREIGN KEY(aluno_disciplina_id) REFERENCES aluno_disciplina(id) ON DELETE CASCADE
 );
+```
 
--- ====)
+---
 
-3. Executar script SQL atualizado (pasta `/database`)  
+### 3. (Opcional) Executar script da pasta `/database`
 
-4. Configurar conexão com o banco no arquivo `/config/database.php`  
+Caso prefira, utilize o script SQL já disponível no projeto.
 
-5. Rodar servidor local:
+---
 
+### 4. Configurar conexão com o banco
+
+Edite o arquivo:
+
+```
+/config/database.php
+```
+
+E ajuste:
+
+* host
+* porta
+* usuário
+* senha
+* nome do banco (`escola`)
+
+---
+
+### 5. Rodar o servidor local
+
+```bash
 php -S localhost:8000
+```
 
+---
 
-6. Acessar a API via Postman ou navegador:
+### 6. Acessar a API
+
+Via navegador ou Postman:
+
+```
 http://localhost:8000/list/alunos
+```
+
 
 
 ---
