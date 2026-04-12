@@ -93,6 +93,8 @@ O foco é construir uma API **simples, funcional e organizada**, seguindo boas p
 
 ---
 
+Diagrama do banco de dados: https://dbdiagram.io/d/69dba77f8089629684789440
+
 <img width="1112" height="553" alt="image" src="https://github.com/user-attachments/assets/95087708-0779-43e7-93f8-968d5bf39d2f" />
 
 
