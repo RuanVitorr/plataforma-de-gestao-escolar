@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestão Escolar</title>
+  <link rel="stylesheet" href="./css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Plataforma de Gestão Escolar</h1>
+    <p>Frontend da API REST - N2</p>
+  </header>
+
+  <nav>
+    <button onclick="mostrarSecao('alunos')">Alunos</button>
+    <button onclick="mostrarSecao('disciplinas')">Disciplinas</button>
+    <button onclick="mostrarSecao('professores')">Professores</button>
+    <button onclick="mostrarSecao('matriculas')">Matrículas</button>
+    <button onclick="mostrarSecao('notas')">Notas</button>
+    <button onclick="mostrarSecao('boletim')">Boletim</button>
+  </nav>
+
+  <main>
+    <section id="alunos" class="secao ativa">
+      <h2>Alunos</h2>
+      <form id="formAluno">
+        <input type="hidden" id="alunoId" />
+        <input type="text" id="alunoNome" placeholder="Nome" required />
+        <input type="email" id="alunoEmail" placeholder="Email" required />
+        <input type="text" id="alunoRgm" placeholder="RGM" required />
+        <button type="submit">Salvar</button>
+      </form>
+      <table>
+        <thead>
+          <tr><th>ID</th><th>Nome</th><th>Email</th><th>RGM</th><th>Ações</th></tr>
+        </thead>
+        <tbody id="tabelaAlunos"></tbody>
+      </table>
+    </section>
+
+    <section id="disciplinas" class="secao">
+        <h2>Disciplinas</h2>
+
+        <form id="formDisciplina">
+            <input type="hidden" id="disciplinaId" />
+            <input type="text" id="disciplinaNome" placeholder="Nome da disciplina" required />
+            <input type="text" id="disciplinaCodigo" placeholder="Código" required />
+            <button type="submit">Salvar</button>
+        </form>
+
+        <table>
+            <thead>
+            <tr><th>ID</th><th>Nome</th><th>Código</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="tabelaDisciplinas"></tbody>
+        </table>
+    </section>
+
+   <section id="professores" class="secao">
+        <h2>Professores</h2>
+
+        <form id="formProfessor">
+            <input type="hidden" id="professorId" />
+
+            <input type="text" id="professorNome" placeholder="Nome" required />
+            <input type="email" id="professorEmail" placeholder="Email" required />
+
+            <select id="professorDisciplinaId" required>
+            <option value="">Selecione a disciplina</option>
+            </select>
+
+            <button type="submit">Salvar</button>
+        </form>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Disciplina ID</th>
+                <th>Ações</th>
+            </tr>
+            </thead>
+            <tbody id="tabelaProfessores"></tbody>
+        </table>
+    </section>
+
+    <section id="matriculas" class="secao">
+        <h2>Matrículas</h2>
+
+        <form id="formMatricula">
+            <select id="matriculaAlunoId" required>
+            <option value="">Selecione o aluno</option>
+            </select>
+
+            <select id="matriculaDisciplinaId" required>
+            <option value="">Selecione a disciplina</option>
+            </select>
+
+            <button type="submit">Salvar</button>
+        </form>
+
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Aluno ID</th>
+                <th>Disciplina ID</th>
+                <th>Ações</th>
+            </tr>
+            </thead>
+            <tbody id="tabelaMatriculas"></tbody>
+        </table>
+    </section>
+
+    <section id="notas" class="secao">
+        <h2>Notas</h2>
+
+        <form id="formNota">
+            <input type="hidden" id="notaId" />
+
+            <select id="notaMatriculaId" required>
+            <option value="">Selecione a matrícula</option>
+            </select>
+
+            <input
+            type="number"
+            id="nota1"
+            placeholder="Nota 1"
+            min="0"
+            max="10"
+            step="0.1"
+            required
+            />
+
+            <input
+            type="number"
+            id="nota2"
+            placeholder="Nota 2"
+            min="0"
+            max="10"
+            step="0.1"
+            required
+            />
+
+            <button type="submit">Salvar</button>
+        </form>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Matrícula ID</th>
+                    <th>Aluno</th>
+                    <th>Nota 1</th>
+                    <th>Nota 2</th>
+                    <th>Média</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+
+            <tbody id="tabelaNotas"></tbody>
+        </table>
+    </section>
+
+    <section id="boletim" class="secao">
+        <h2>Boletim</h2>
+
+        <form id="formBoletim">
+            <select id="boletimAlunoId" required>
+            <option value="">Selecione o aluno</option>
+            </select>
+
+            <button type="submit">Buscar Boletim</button>
+        </form>
+
+        <div id="resultadoBoletim"></div>
+    </section>
+  </main>
+
+  <script src="./js/api.js"></script>
+  <script src="./js/alunos.js"></script>
+  <script src="./js/disciplinas.js"></script>
+  <script src="./js/professores.js"></script>
+  <script src="./js/matriculas.js"></script>
+  <script src="./js/notas.js"></script>
+  <script src="./js/boletim.js"></script>
+</body>
+</html>
