@@ -1,0 +1,1197 @@
+const initialState = {
+  alunos: [],
+  disciplinas: [],
+  professores: [],
+  matriculas: [],
+  notas: [],
+  nextId: {
+    alunos: 1,
+    disciplinas: 1,
+    professores: 1,
+    matriculas: 1,
+    notas: 1
+  }
+};
+
+let state = structuredClone(initialState);
+
+const titles = {
+  dashboard: "Painel",
+  alunos: "Alunos",
+  disciplinas: "Disciplinas",
+  professores: "Professores",
+  matriculas: "Matriculas",
+  notas: "Notas",
+  boletim: "Boletim"
+};
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+async function loadState() {
+  const saved = window.schoolStore ? await window.schoolStore.read() : null;
+  const local = localStorage.getItem("gestao-escolar-desktop");
+  state = saved || (local ? JSON.parse(local) : structuredClone(initialState));
+  normalizeState();
+  render();
+}
+
+async function saveState() {
+  normalizeState();
+  if (window.schoolStore) {
+    await window.schoolStore.write(state);
+  }
+  localStorage.setItem("gestao-escolar-desktop", JSON.stringify(state));
+  render();
+}
+
+function normalizeState() {
+  state = { ...clone(initialState), ...state, nextId: { ...initialState.nextId, ...(state.nextId || {}) } };
+  for (const key of ["alunos", "disciplinas", "professores", "matriculas", "notas"]) {
+    const maxId = state[key].reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+    state.nextId[key] = Math.max(Number(state.nextId[key]) || 1, maxId + 1);
+  }
+}
+
+function createItem(collection, data) {
+  const item = { id: state.nextId[collection]++, ...data };
+  state[collection].push(item);
+  return item;
+}
+
+function updateItem(collection, id, data) {
+  const item = state[collection].find((record) => Number(record.id) === Number(id));
+  if (item) Object.assign(item, data);
+}
+
+function deleteItem(collection, id) {
+  state[collection] = state[collection].filter((item) => Number(item.id) !== Number(id));
+}
+
+function getAluno(id) {
+  return state.alunos.find((aluno) => Number(aluno.id) === Number(id));
+}
+
+function getDisciplina(id) {
+  return state.disciplinas.find((disciplina) => Number(disciplina.id) === Number(id));
+}
+
+function getProfessorByDisciplina(id) {
+  return state.professores.find((professor) => Number(professor.disciplinaId) === Number(id));
+}
+
+function getMatricula(id) {
+  return state.matriculas.find((matricula) => Number(matricula.id) === Number(id));
+}
+
+function getNotaByMatricula(matriculaId) {
+  return state.notas.find((nota) => Number(nota.matriculaId) === Number(matriculaId));
+}
+
+function media(nota) {
+  if (!nota) return "-";
+  return ((Number(nota.nota1) + Number(nota.nota2)) / 2).toFixed(2);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function setView(viewId) {
+  $$(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
+  $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
+  $("#pageTitle").textContent = titles[viewId];
+}
+
+function optionList(items, selectedId, labelFn, emptyText) {
+  const options = [`<option value="">${emptyText}</option>`];
+  for (const item of items) {
+    const selected = Number(item.id) === Number(selectedId) ? "selected" : "";
+    options.push(`<option value="${item.id}" ${selected}>${escapeHtml(labelFn(item))}</option>`);
+  }
+  return options.join("");
+}
+
+function render() {
+  renderMetrics();
+  renderSelects();
+  renderAlunos();
+  renderDisciplinas();
+  renderProfessores();
+  renderMatriculas();
+  renderNotas();
+  renderBoletim();
+}
+
+function renderMetrics() {
+  $("#metricAlunos").textContent = state.alunos.length;
+  $("#metricDisciplinas").textContent = state.disciplinas.length;
+  $("#metricProfessores").textContent = state.professores.length;
+  $("#metricMatriculas").textContent = state.matriculas.length;
+  $("#metricNotas").textContent = `${state.notas.length} notas lancadas`;
+
+  const medias = state.notas.map((nota) => Number(media(nota))).filter(Number.isFinite);
+  $("#metricMedia").textContent = medias.length
+    ? (medias.reduce((total, value) => total + value, 0) / medias.length).toFixed(2)
+    : "-";
+
+  const alunosComBoletim = new Set(
+    state.notas
+      .map((nota) => getMatricula(nota.matriculaId))
+      .filter(Boolean)
+      .map((matricula) => matricula.alunoId)
+  );
+  $("#metricBoletins").textContent = alunosComBoletim.size;
+  $("#metricSemProfessor").textContent = state.disciplinas.filter((disciplina) => !getProfessorByDisciplina(disciplina.id)).length;
+}
+
+function renderSelects() {
+  $("#professorDisciplina").innerHTML = optionList(state.disciplinas, $("#professorDisciplina").value, (disciplina) => `${disciplina.nome} - ${disciplina.codigo}`, "Selecione a disciplina");
+  $("#matriculaAluno").innerHTML = optionList(state.alunos, $("#matriculaAluno").value, (aluno) => `${aluno.nome} - ${aluno.rgm}`, "Selecione o aluno");
+  $("#matriculaDisciplina").innerHTML = optionList(state.disciplinas, $("#matriculaDisciplina").value, (disciplina) => `${disciplina.nome} - ${disciplina.codigo}`, "Selecione a disciplina");
+  $("#notaMatricula").innerHTML = optionList(state.matriculas, $("#notaMatricula").value, (matricula) => {
+    const aluno = getAluno(matricula.alunoId);
+    const disciplina = getDisciplina(matricula.disciplinaId);
+    return `${aluno?.nome || "Aluno removido"} | ${disciplina?.nome || "Disciplina removida"}`;
+  }, "Selecione a matricula");
+  $("#boletimAluno").innerHTML = optionList(state.alunos, $("#boletimAluno").value, (aluno) => `${aluno.nome} - ${aluno.rgm}`, "Selecione o aluno");
+}
+
+function renderAlunos() {
+  const tbody = $("#listaAlunos");
+  if (!state.alunos.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty">Nenhum aluno cadastrado.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = state.alunos.map((aluno) => `
+    <tr>
+      <td>${escapeHtml(aluno.nome)}</td>
+      <td>${escapeHtml(aluno.email)}</td>
+      <td><span class="badge">${escapeHtml(aluno.rgm)}</span></td>
+      <td class="action-row">
+        <button type="button" data-edit-aluno="${aluno.id}">Editar</button>
+        <button class="danger" type="button" data-delete-aluno="${aluno.id}">Excluir</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function renderDisciplinas() {
+  const tbody = $("#listaDisciplinas");
+  if (!state.disciplinas.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty">Nenhuma disciplina cadastrada.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = state.disciplinas.map((disciplina) => {
+    const professor = getProfessorByDisciplina(disciplina.id);
+    return `
+      <tr>
+        <td>${escapeHtml(disciplina.nome)}</td>
+        <td><span class="badge">${escapeHtml(disciplina.codigo)}</span></td>
+        <td>${escapeHtml(professor?.nome || "-")}</td>
+        <td class="action-row">
+          <button type="button" data-edit-disciplina="${disciplina.id}">Editar</button>
+          <button class="danger" type="button" data-delete-disciplina="${disciplina.id}">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderProfessores() {
+  const tbody = $("#listaProfessores");
+  if (!state.professores.length) {
+    tbody.innerHTML = `<tr><td colspan="4"><div class="empty">Nenhum professor cadastrado.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = state.professores.map((professor) => {
+    const disciplina = getDisciplina(professor.disciplinaId);
+    return `
+      <tr>
+        <td>${escapeHtml(professor.nome)}</td>
+        <td>${escapeHtml(professor.email)}</td>
+        <td>${escapeHtml(disciplina?.nome || "-")}</td>
+        <td class="action-row">
+          <button type="button" data-edit-professor="${professor.id}">Editar</button>
+          <button class="danger" type="button" data-delete-professor="${professor.id}">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderMatriculas() {
+  const tbody = $("#listaMatriculas");
+  if (!state.matriculas.length) {
+    tbody.innerHTML = `<tr><td colspan="3"><div class="empty">Nenhuma matricula cadastrada.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = state.matriculas.map((matricula) => {
+    const aluno = getAluno(matricula.alunoId);
+    const disciplina = getDisciplina(matricula.disciplinaId);
+    return `
+      <tr>
+        <td>${escapeHtml(aluno?.nome || "Aluno removido")}</td>
+        <td>${escapeHtml(disciplina?.nome || "Disciplina removida")}</td>
+        <td class="action-row">
+          <button class="danger" type="button" data-delete-matricula="${matricula.id}">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderNotas() {
+  const tbody = $("#listaNotas");
+  if (!state.notas.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">Nenhuma nota lancada.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = state.notas.map((nota) => {
+    const matricula = getMatricula(nota.matriculaId);
+    const aluno = matricula ? getAluno(matricula.alunoId) : null;
+    const disciplina = matricula ? getDisciplina(matricula.disciplinaId) : null;
+    const mediaFinal = Number(media(nota));
+    const status = mediaFinal >= 6 ? "success" : "warning";
+    return `
+      <tr>
+        <td>${escapeHtml(aluno?.nome || "Aluno removido")}</td>
+        <td>${escapeHtml(disciplina?.nome || "Disciplina removida")}</td>
+        <td>${Number(nota.nota1).toFixed(1)}</td>
+        <td>${Number(nota.nota2).toFixed(1)}</td>
+        <td><span class="badge ${status}">${media(nota)}</span></td>
+        <td class="action-row">
+          <button type="button" data-edit-nota="${nota.id}">Editar</button>
+          <button class="danger" type="button" data-delete-nota="${nota.id}">Excluir</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderBoletim() {
+  const alunoId = $("#boletimAluno").value;
+  const result = $("#boletimResultado");
+  if (!alunoId) {
+    result.className = "boletim-empty";
+    result.innerHTML = "Selecione um aluno para visualizar as notas.";
+    return;
+  }
+
+  const aluno = getAluno(alunoId);
+  const matriculas = state.matriculas.filter((matricula) => Number(matricula.alunoId) === Number(alunoId));
+  if (!matriculas.length) {
+    result.className = "boletim-empty";
+    result.innerHTML = "Este aluno ainda nao possui matriculas.";
+    return;
+  }
+
+  result.className = "boletim-card";
+  result.innerHTML = `
+    <div class="boletim-head">
+      <div>
+        <h2>${escapeHtml(aluno.nome)}</h2>
+        <p>${escapeHtml(aluno.email)} | RGM ${escapeHtml(aluno.rgm)}</p>
+      </div>
+      <span class="badge">${matriculas.length} disciplinas</span>
+    </div>
+    <table>
+      <thead><tr><th>Disciplina</th><th>Codigo</th><th>N1</th><th>N2</th><th>Media</th></tr></thead>
+      <tbody>
+        ${matriculas.map((matricula) => {
+          const disciplina = getDisciplina(matricula.disciplinaId);
+          const nota = getNotaByMatricula(matricula.id);
+          return `
+            <tr>
+              <td>${escapeHtml(disciplina?.nome || "Disciplina removida")}</td>
+              <td>${escapeHtml(disciplina?.codigo || "-")}</td>
+              <td>${nota ? Number(nota.nota1).toFixed(1) : "-"}</td>
+              <td>${nota ? Number(nota.nota2).toFixed(1) : "-"}</td>
+              <td>${nota ? media(nota) : "-"}</td>
+            </tr>
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function bindNavigation() {
+  $$(".nav-item").forEach((button) => {
+    button.addEventListener("click", () => setView(button.dataset.view));
+  });
+}
+
+function bindForms() {
+  $("#formAluno").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const id = $("#alunoId").value;
+    const data = {
+      nome: $("#alunoNome").value.trim(),
+      email: $("#alunoEmail").value.trim(),
+      rgm: $("#alunoRgm").value.trim()
+    };
+    id ? updateItem("alunos", id, data) : createItem("alunos", data);
+    event.target.reset();
+    $("#alunoId").value = "";
+    await saveState();
+  });
+
+  $("#formDisciplina").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const id = $("#disciplinaId").value;
+    const data = {
+      nome: $("#disciplinaNome").value.trim(),
+      codigo: $("#disciplinaCodigo").value.trim().toUpperCase()
+    };
+    id ? updateItem("disciplinas", id, data) : createItem("disciplinas", data);
+    event.target.reset();
+    $("#disciplinaId").value = "";
+    await saveState();
+  });
+
+  $("#formProfessor").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const id = $("#professorId").value;
+    const data = {
+      nome: $("#professorNome").value.trim(),
+      email: $("#professorEmail").value.trim(),
+      disciplinaId: Number($("#professorDisciplina").value)
+    };
+    id ? updateItem("professores", id, data) : createItem("professores", data);
+    event.target.reset();
+    $("#professorId").value = "";
+    await saveState();
+  });
+
+  $("#formMatricula").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const alunoId = Number($("#matriculaAluno").value);
+    const disciplinaId = Number($("#matriculaDisciplina").value);
+    const exists = state.matriculas.some((matricula) => matricula.alunoId === alunoId && matricula.disciplinaId === disciplinaId);
+    if (exists) {
+      alert("Este aluno ja esta matriculado nesta disciplina.");
+      return;
+    }
+    createItem("matriculas", { alunoId, disciplinaId });
+    event.target.reset();
+    await saveState();
+  });
+
+  $("#formNota").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const id = $("#notaId").value;
+    const matriculaId = Number($("#notaMatricula").value);
+    const data = {
+      matriculaId,
+      nota1: Number($("#nota1").value),
+      nota2: Number($("#nota2").value)
+    };
+    const existing = state.notas.find((nota) => nota.matriculaId === matriculaId && Number(nota.id) !== Number(id));
+    if (existing) {
+      alert("Esta matricula ja possui notas. Edite o lancamento existente.");
+      return;
+    }
+    id ? updateItem("notas", id, data) : createItem("notas", data);
+    event.target.reset();
+    $("#notaId").value = "";
+    await saveState();
+  });
+}
+
+function bindTableActions() {
+  document.body.addEventListener("click", async (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+
+    if (button.dataset.editAluno) editAluno(button.dataset.editAluno);
+    if (button.dataset.editDisciplina) editDisciplina(button.dataset.editDisciplina);
+    if (button.dataset.editProfessor) editProfessor(button.dataset.editProfessor);
+    if (button.dataset.editNota) editNota(button.dataset.editNota);
+    if (button.dataset.deleteAluno) await removeAluno(button.dataset.deleteAluno);
+    if (button.dataset.deleteDisciplina) await removeDisciplina(button.dataset.deleteDisciplina);
+    if (button.dataset.deleteProfessor) await removeProfessor(button.dataset.deleteProfessor);
+    if (button.dataset.deleteMatricula) await removeMatricula(button.dataset.deleteMatricula);
+    if (button.dataset.deleteNota) await removeNota(button.dataset.deleteNota);
+  });
+}
+
+function editAluno(id) {
+  const aluno = getAluno(id);
+  $("#alunoId").value = aluno.id;
+  $("#alunoNome").value = aluno.nome;
+  $("#alunoEmail").value = aluno.email;
+  $("#alunoRgm").value = aluno.rgm;
+}
+
+function editDisciplina(id) {
+  const disciplina = getDisciplina(id);
+  $("#disciplinaId").value = disciplina.id;
+  $("#disciplinaNome").value = disciplina.nome;
+  $("#disciplinaCodigo").value = disciplina.codigo;
+}
+
+function editProfessor(id) {
+  const professor = state.professores.find((item) => Number(item.id) === Number(id));
+  $("#professorId").value = professor.id;
+  $("#professorNome").value = professor.nome;
+  $("#professorEmail").value = professor.email;
+  $("#professorDisciplina").value = professor.disciplinaId;
+}
+
+function editNota(id) {
+  const nota = state.notas.find((item) => Number(item.id) === Number(id));
+  $("#notaId").value = nota.id;
+  $("#notaMatricula").value = nota.matriculaId;
+  $("#nota1").value = nota.nota1;
+  $("#nota2").value = nota.nota2;
+}
+
+async function removeAluno(id) {
+  if (!confirm("Excluir este aluno e seus vinculos?")) return;
+  const matriculas = state.matriculas.filter((matricula) => Number(matricula.alunoId) === Number(id)).map((matricula) => matricula.id);
+  deleteItem("alunos", id);
+  state.matriculas = state.matriculas.filter((matricula) => Number(matricula.alunoId) !== Number(id));
+  state.notas = state.notas.filter((nota) => !matriculas.includes(nota.matriculaId));
+  await saveState();
+}
+
+async function removeDisciplina(id) {
+  if (!confirm("Excluir esta disciplina e seus vinculos?")) return;
+  const matriculas = state.matriculas.filter((matricula) => Number(matricula.disciplinaId) === Number(id)).map((matricula) => matricula.id);
+  deleteItem("disciplinas", id);
+  state.professores = state.professores.filter((professor) => Number(professor.disciplinaId) !== Number(id));
+  state.matriculas = state.matriculas.filter((matricula) => Number(matricula.disciplinaId) !== Number(id));
+  state.notas = state.notas.filter((nota) => !matriculas.includes(nota.matriculaId));
+  await saveState();
+}
+
+async function removeProfessor(id) {
+  if (!confirm("Excluir este professor?")) return;
+  deleteItem("professores", id);
+  await saveState();
+}
+
+async function removeMatricula(id) {
+  if (!confirm("Excluir esta matricula e suas notas?")) return;
+  deleteItem("matriculas", id);
+  state.notas = state.notas.filter((nota) => Number(nota.matriculaId) !== Number(id));
+  await saveState();
+}
+
+async function removeNota(id) {
+  if (!confirm("Excluir esta nota?")) return;
+  deleteItem("notas", id);
+  await saveState();
+}
+
+function bindUtilityActions() {
+  $("#boletimAluno").addEventListener("change", renderBoletim);
+  $("#seedButton").addEventListener("click", async () => {
+    state = createSeedState();
+    await saveState();
+  });
+  $("#resetButton").addEventListener("click", async () => {
+    if (!confirm("Limpar todos os dados cadastrados?")) return;
+    state = structuredClone(initialState);
+    await saveState();
+  });
+}
+
+function createSeedState() {
+  state = structuredClone(initialState);
+  const ana = createItem("alunos", { nome: "Ana Beatriz Lima", email: "ana.lima@email.com", rgm: "251001" });
+  const pedro = createItem("alunos", { nome: "Pedro Henrique Souza", email: "pedro.souza@email.com", rgm: "251002" });
+  const matematica = createItem("disciplinas", { nome: "Matematica Aplicada", codigo: "MAT101" });
+  const banco = createItem("disciplinas", { nome: "Banco de Dados", codigo: "BD201" });
+  createItem("professores", { nome: "Marina Costa", email: "marina.costa@email.com", disciplinaId: matematica.id });
+  createItem("professores", { nome: "Carlos Mendes", email: "carlos.mendes@email.com", disciplinaId: banco.id });
+  const matriculaAna = createItem("matriculas", { alunoId: ana.id, disciplinaId: matematica.id });
+  const matriculaPedro = createItem("matriculas", { alunoId: pedro.id, disciplinaId: banco.id });
+  createItem("notas", { matriculaId: matriculaAna.id, nota1: 8.5, nota2: 9.0 });
+  createItem("notas", { matriculaId: matriculaPedro.id, nota1: 6.8, nota2: 7.4 });
+  return state;
+}
+
+bindNavigation();
+bindForms();
+bindTableActions();
+bindUtilityActions();
+loadState();
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plataforma de Gestao Escolar</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">GE</span>
+      <div>
+        <strong>Gestao Escolar</strong>
+        <small>Versao desktop</small>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Navegacao principal">
+      <button class="nav-item active" data-view="dashboard">Painel</button>
+      <button class="nav-item" data-view="alunos">Alunos</button>
+      <button class="nav-item" data-view="disciplinas">Disciplinas</button>
+      <button class="nav-item" data-view="professores">Professores</button>
+      <button class="nav-item" data-view="matriculas">Matriculas</button>
+      <button class="nav-item" data-view="notas">Notas</button>
+      <button class="nav-item" data-view="boletim">Boletim</button>
+    </nav>
+  </aside>
+
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Plataforma de Gestao Escolar</p>
+        <h1 id="pageTitle">Painel</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="secondary" id="seedButton" type="button">Dados exemplo</button>
+        <button class="danger" id="resetButton" type="button">Limpar dados</button>
+      </div>
+    </header>
+
+    <section class="view active" id="dashboard">
+      <div class="metrics">
+        <article class="metric"><span>Alunos</span><strong id="metricAlunos">0</strong></article>
+        <article class="metric"><span>Disciplinas</span><strong id="metricDisciplinas">0</strong></article>
+        <article class="metric"><span>Professores</span><strong id="metricProfessores">0</strong></article>
+        <article class="metric"><span>Matriculas</span><strong id="metricMatriculas">0</strong></article>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Resumo academico</h2>
+          <span id="metricNotas">0 notas lancadas</span>
+        </div>
+        <div class="summary-grid">
+          <div><span class="summary-label">Media geral</span><strong id="metricMedia">-</strong></div>
+          <div><span class="summary-label">Alunos com boletim</span><strong id="metricBoletins">0</strong></div>
+          <div><span class="summary-label">Disciplinas sem professor</span><strong id="metricSemProfessor">0</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="alunos">
+      <div class="layout">
+        <form class="panel form" id="formAluno">
+          <h2>Cadastro de aluno</h2>
+          <input type="hidden" id="alunoId" />
+          <label>Nome<input id="alunoNome" type="text" required /></label>
+          <label>Email<input id="alunoEmail" type="email" required /></label>
+          <label>RGM<input id="alunoRgm" type="text" required /></label>
+          <button type="submit">Salvar aluno</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Alunos cadastrados</h2></div>
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>RGM</th><th>Acoes</th></tr></thead>
+            <tbody id="listaAlunos"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="disciplinas">
+      <div class="layout">
+        <form class="panel form" id="formDisciplina">
+          <h2>Cadastro de disciplina</h2>
+          <input type="hidden" id="disciplinaId" />
+          <label>Nome<input id="disciplinaNome" type="text" required /></label>
+          <label>Codigo<input id="disciplinaCodigo" type="text" required /></label>
+          <button type="submit">Salvar disciplina</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Disciplinas</h2></div>
+          <table>
+            <thead><tr><th>Nome</th><th>Codigo</th><th>Professor</th><th>Acoes</th></tr></thead>
+            <tbody id="listaDisciplinas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="professores">
+      <div class="layout">
+        <form class="panel form" id="formProfessor">
+          <h2>Cadastro de professor</h2>
+          <input type="hidden" id="professorId" />
+          <label>Nome<input id="professorNome" type="text" required /></label>
+          <label>Email<input id="professorEmail" type="email" required /></label>
+          <label>Disciplina<select id="professorDisciplina" required></select></label>
+          <button type="submit">Salvar professor</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Professores</h2></div>
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>Disciplina</th><th>Acoes</th></tr></thead>
+            <tbody id="listaProfessores"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="matriculas">
+      <div class="layout">
+        <form class="panel form" id="formMatricula">
+          <h2>Nova matricula</h2>
+          <label>Aluno<select id="matriculaAluno" required></select></label>
+          <label>Disciplina<select id="matriculaDisciplina" required></select></label>
+          <button type="submit">Matricular</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Matriculas</h2></div>
+          <table>
+            <thead><tr><th>Aluno</th><th>Disciplina</th><th>Acoes</th></tr></thead>
+            <tbody id="listaMatriculas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="notas">
+      <div class="layout">
+        <form class="panel form" id="formNota">
+          <h2>Lancamento de notas</h2>
+          <input type="hidden" id="notaId" />
+          <label>Matricula<select id="notaMatricula" required></select></label>
+          <label>Nota 1<input id="nota1" type="number" min="0" max="10" step="0.1" required /></label>
+          <label>Nota 2<input id="nota2" type="number" min="0" max="10" step="0.1" required /></label>
+          <button type="submit">Salvar nota</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Notas</h2></div>
+          <table>
+            <thead><tr><th>Aluno</th><th>Disciplina</th><th>N1</th><th>N2</th><th>Media</th><th>Acoes</th></tr></thead>
+            <tbody id="listaNotas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="boletim">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Boletim academico</h2>
+          <select id="boletimAluno"></select>
+        </div>
+        <div id="boletimResultado" class="boletim-empty">Selecione um aluno para visualizar as notas.</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
+
+const { app, BrowserWindow, ipcMain } = require("electron");
+const fs = require("fs/promises");
+const path = require("path");
+
+function dataFilePath() {
+  return path.join(app.getPath("userData"), "dados-escolares.json");
+}
+
+async function readData() {
+  try {
+    const content = await fs.readFile(dataFilePath(), "utf8");
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+async function writeData(data) {
+  await fs.mkdir(path.dirname(dataFilePath()), { recursive: true });
+  await fs.writeFile(dataFilePath(), JSON.stringify(data, null, 2), "utf8");
+  return true;
+}
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1280,
+    height: 820,
+    minWidth: 980,
+    minHeight: 660,
+    title: "Plataforma de Gestao Escolar",
+    backgroundColor: "#f4f7fb",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  win.removeMenu();
+  win.loadFile(path.join(__dirname, "index.html"));
+}
+
+app.whenReady().then(createWindow);
+
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
+
+app.on("activate", () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
+});
+
+ipcMain.handle("data:read", readData);
+ipcMain.handle("data:write", (_event, data) => writeData(data));
+
+{
+  "name": "gestao-escolar-desktop",
+  "version": "1.0.0",
+  "description": "Versao desktop da Plataforma de Gestao Escolar",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "gestao-escolar",
+    "desktop",
+    "electron"
+  ],
+  "author": "Ruan Vitor, Anita Donato, Pedro Henrique",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
+
+const { contextBridge, ipcRenderer } = require("electron");
+
+contextBridge.exposeInMainWorld("schoolStore", {
+  read: () => ipcRenderer.invoke("data:read"),
+  write: (data) => ipcRenderer.invoke("data:write", data)
+});
+
+# Versao Desktop - Plataforma de Gestao Escolar
+
+Esta pasta contem uma versao desktop do sistema usando Electron.
+
+## Como executar
+
+1. Instale o Node.js, se ainda nao estiver instalado.
+2. Abra o terminal nesta pasta:
+
+```bash
+cd desktop
+```
+
+3. Instale as dependencias:
+
+```bash
+npm install
+```
+
+4. Inicie o aplicativo:
+
+```bash
+npm start
+```
+
+## Observacoes
+
+- Esta versao nao depende da API PHP nem do PostgreSQL.
+- Os dados sao salvos localmente pelo Electron.
+- O aplicativo possui alunos, disciplinas, professores, matriculas, notas e boletim.
+
+:root {
+  --bg: #f4f7fb;
+  --panel: #ffffff;
+  --text: #172033;
+  --muted: #67758d;
+  --line: #dce4ef;
+  --primary: #1f6feb;
+  --primary-strong: #174ea6;
+  --danger: #c24135;
+  --success: #16794c;
+  --warning: #9a6700;
+  --sidebar: #172033;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.sidebar {
+  min-height: 100vh;
+  background: var(--sidebar);
+  color: #fff;
+  padding: 24px 18px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 34px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: #f0b429;
+  color: #172033;
+  font-weight: 800;
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand small {
+  margin-top: 2px;
+  color: #b8c4d6;
+}
+
+.nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-item {
+  width: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: 8px;
+  text-align: left;
+  color: #dbe6f5;
+  background: transparent;
+  cursor: pointer;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  background: #26354d;
+  color: #fff;
+}
+
+.app {
+  min-width: 0;
+  padding: 28px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  margin-bottom: 0;
+  font-size: 30px;
+}
+
+h2 {
+  margin-bottom: 16px;
+  font-size: 19px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.metric,
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 12px 34px rgba(23, 32, 51, 0.06);
+}
+
+.metric {
+  padding: 18px;
+}
+
+.metric span,
+.summary-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.metric strong {
+  display: block;
+  margin-top: 10px;
+  font-size: 34px;
+}
+
+.panel {
+  padding: 20px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panel-header h2 {
+  margin-bottom: 0;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.summary-grid strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 28px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.form {
+  display: grid;
+  gap: 13px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input,
+select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: var(--text);
+  background: #fff;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--primary);
+  outline: 3px solid rgba(31, 111, 235, 0.14);
+}
+
+button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 8px;
+  padding: 9px 14px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button:hover {
+  background: var(--primary-strong);
+}
+
+button.secondary {
+  background: #e7eef9;
+  color: #1f3d67;
+}
+
+button.secondary:hover {
+  background: #d8e5f7;
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+button.danger:hover {
+  background: #a3352b;
+}
+
+.action-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-row button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.table-panel {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+th,
+td {
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #eef4fb;
+  color: #27496d;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.badge.success {
+  background: #e5f6ed;
+  color: var(--success);
+}
+
+.badge.warning {
+  background: #fff4d6;
+  color: var(--warning);
+}
+
+.empty,
+.boletim-empty {
+  padding: 24px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.boletim-card {
+  display: grid;
+  gap: 16px;
+}
+
+.boletim-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+@media (max-width: 1040px) {
+  body {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    min-height: auto;
+  }
+
+  .nav {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
+  .layout,
+  .metrics,
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
