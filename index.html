@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Plataforma de Gestao Escolar</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-mark">GE</span>
+      <div>
+        <strong>Gestao Escolar</strong>
+        <small>Versao desktop</small>
+      </div>
+    </div>
+
+    <nav class="nav" aria-label="Navegacao principal">
+      <button class="nav-item active" data-view="dashboard">Painel</button>
+      <button class="nav-item" data-view="alunos">Alunos</button>
+      <button class="nav-item" data-view="disciplinas">Disciplinas</button>
+      <button class="nav-item" data-view="professores">Professores</button>
+      <button class="nav-item" data-view="matriculas">Matriculas</button>
+      <button class="nav-item" data-view="notas">Notas</button>
+      <button class="nav-item" data-view="boletim">Boletim</button>
+    </nav>
+  </aside>
+
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Plataforma de Gestao Escolar</p>
+        <h1 id="pageTitle">Painel</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="secondary" id="seedButton" type="button">Dados exemplo</button>
+        <button class="danger" id="resetButton" type="button">Limpar dados</button>
+      </div>
+    </header>
+
+    <section class="view active" id="dashboard">
+      <div class="metrics">
+        <article class="metric"><span>Alunos</span><strong id="metricAlunos">0</strong></article>
+        <article class="metric"><span>Disciplinas</span><strong id="metricDisciplinas">0</strong></article>
+        <article class="metric"><span>Professores</span><strong id="metricProfessores">0</strong></article>
+        <article class="metric"><span>Matriculas</span><strong id="metricMatriculas">0</strong></article>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Resumo academico</h2>
+          <span id="metricNotas">0 notas lancadas</span>
+        </div>
+        <div class="summary-grid">
+          <div><span class="summary-label">Media geral</span><strong id="metricMedia">-</strong></div>
+          <div><span class="summary-label">Alunos com boletim</span><strong id="metricBoletins">0</strong></div>
+          <div><span class="summary-label">Disciplinas sem professor</span><strong id="metricSemProfessor">0</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="alunos">
+      <div class="layout">
+        <form class="panel form" id="formAluno">
+          <h2>Cadastro de aluno</h2>
+          <input type="hidden" id="alunoId" />
+          <label>Nome<input id="alunoNome" type="text" required /></label>
+          <label>Email<input id="alunoEmail" type="email" required /></label>
+          <label>RGM<input id="alunoRgm" type="text" required /></label>
+          <button type="submit">Salvar aluno</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Alunos cadastrados</h2></div>
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>RGM</th><th>Acoes</th></tr></thead>
+            <tbody id="listaAlunos"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="disciplinas">
+      <div class="layout">
+        <form class="panel form" id="formDisciplina">
+          <h2>Cadastro de disciplina</h2>
+          <input type="hidden" id="disciplinaId" />
+          <label>Nome<input id="disciplinaNome" type="text" required /></label>
+          <label>Codigo<input id="disciplinaCodigo" type="text" required /></label>
+          <button type="submit">Salvar disciplina</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Disciplinas</h2></div>
+          <table>
+            <thead><tr><th>Nome</th><th>Codigo</th><th>Professor</th><th>Acoes</th></tr></thead>
+            <tbody id="listaDisciplinas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="professores">
+      <div class="layout">
+        <form class="panel form" id="formProfessor">
+          <h2>Cadastro de professor</h2>
+          <input type="hidden" id="professorId" />
+          <label>Nome<input id="professorNome" type="text" required /></label>
+          <label>Email<input id="professorEmail" type="email" required /></label>
+          <label>Disciplina<select id="professorDisciplina" required></select></label>
+          <button type="submit">Salvar professor</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Professores</h2></div>
+          <table>
+            <thead><tr><th>Nome</th><th>Email</th><th>Disciplina</th><th>Acoes</th></tr></thead>
+            <tbody id="listaProfessores"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="matriculas">
+      <div class="layout">
+        <form class="panel form" id="formMatricula">
+          <h2>Nova matricula</h2>
+          <label>Aluno<select id="matriculaAluno" required></select></label>
+          <label>Disciplina<select id="matriculaDisciplina" required></select></label>
+          <button type="submit">Matricular</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Matriculas</h2></div>
+          <table>
+            <thead><tr><th>Aluno</th><th>Disciplina</th><th>Acoes</th></tr></thead>
+            <tbody id="listaMatriculas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="notas">
+      <div class="layout">
+        <form class="panel form" id="formNota">
+          <h2>Lancamento de notas</h2>
+          <input type="hidden" id="notaId" />
+          <label>Matricula<select id="notaMatricula" required></select></label>
+          <label>Nota 1<input id="nota1" type="number" min="0" max="10" step="0.1" required /></label>
+          <label>Nota 2<input id="nota2" type="number" min="0" max="10" step="0.1" required /></label>
+          <button type="submit">Salvar nota</button>
+        </form>
+        <div class="panel table-panel">
+          <div class="panel-header"><h2>Notas</h2></div>
+          <table>
+            <thead><tr><th>Aluno</th><th>Disciplina</th><th>N1</th><th>N2</th><th>Media</th><th>Acoes</th></tr></thead>
+            <tbody id="listaNotas"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="boletim">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Boletim academico</h2>
+          <select id="boletimAluno"></select>
+        </div>
+        <div id="boletimResultado" class="boletim-empty">Selecione um aluno para visualizar as notas.</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

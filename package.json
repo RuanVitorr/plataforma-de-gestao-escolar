@@ -1,0 +1,19 @@
+{
+  "name": "gestao-escolar-desktop",
+  "version": "1.0.0",
+  "description": "Versao desktop da Plataforma de Gestao Escolar",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "keywords": [
+    "gestao-escolar",
+    "desktop",
+    "electron"
+  ],
+  "author": "Ruan Vitor, Anita Donato, Pedro Henrique",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}
